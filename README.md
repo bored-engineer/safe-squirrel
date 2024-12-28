@@ -4,14 +4,14 @@
 It can be adopted as a drop-in replacement <sup>([see caveats](#caveats))</sup> by replacing all [squirrel](https://github.com/Masterminds/squirrel) imports with `github.com/bored-engineer/safe-squirrel` instead.
 
 # Why?
-The [squirrel](https://github.com/Masterminds/squirrel) package already encourages the use of [parameterized queries (aka placeholders)](https://cheatsheetseries.owasp.org/cheatsheets/Query_Parameterization_Cheat_Sheet.html) to avoid the risk of [SQL injection](https://owasp.org/www-community/attacks/SQL_Injection) in, ex:
+The [squirrel](https://github.com/Masterminds/squirrel) package already encourages the use of [parameterized queries (aka placeholders)](https://cheatsheetseries.owasp.org/cheatsheets/Query_Parameterization_Cheat_Sheet.html) to reduce the risk of [SQL injection](https://owasp.org/www-community/attacks/SQL_Injection), ex:
 ```go
 username := "bored-engineer" // untrusted input
 
 // "SELECT * FROM users WHERE github = ?"
 sq.Select("*").From("users").Where(sq.Eq{"github": username}).ToSql()
 ```
-However, not all methods/parameters is safe/protected against SQL injection, ex:
+However, not all methods/parameters in [squirrel](https://github.com/Masterminds/squirrel) are safe/protected against SQL injection, ex:
 ```go
 provider := "is_superadmin=true OR github" // untrusted input
 username := "uh oh" // untrusted input
@@ -19,7 +19,9 @@ username := "uh oh" // untrusted input
 // "SELECT * FROM users WHERE is_superadmin=true OR github = ?"
 sq.Select("*").From("users").Where(sq.Eq{provider: username}).ToSql()
 ```
-While this is a contrived example, [SQL injection](https://owasp.org/www-community/attacks/SQL_Injection) vulnerabilities have been found in real-world applications/services that use [squirrel](https://github.com/Masterminds/squirrel) due to incorrect usage of these APIs.
+While this is a contrived example, [SQL injection](https://owasp.org/www-community/attacks/SQL_Injection) vulnerabilities have been found in real-world applications/services that use [squirrel](https://github.com/Masterminds/squirrel) due to incorrect usage of these APIs by developers. 
+
+This package aims to systemically prevent these [SQL injection](https://owasp.org/www-community/attacks/SQL_Injection) vulnerabilities in [squirrel](https://github.com/Masterminds/squirrel) at compile-time with minimal/no refactoring.
 
 # How?
 By taking advantage of the Golang type system/compiler, it is possible to create a function that will _only_ accept a `const` string at compile-time, ex:
