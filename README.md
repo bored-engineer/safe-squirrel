@@ -1,7 +1,7 @@
 # Safe Squirrel - fluent SQL generator for Go [![Go Reference](https://pkg.go.dev/badge/github.com/bored-engineer/safe-squirrel.svg)](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel)
 "safe" squirrel is a _fork_ of [github.com/Masterminds/squirrel](https://github.com/Masterminds/squirrel) that enforces more secure/safe usage via the Golang type system. 
 
-It can be adopted as a drop-in replacement ([caveat](#caveats)) for squirrel just by changing the replacing the import with `github.com/bored-engineer/safe-squirrel`.
+It can be adopted as a drop-in replacement <sup>([see caveats](#caveats))</sup> by replacing all [squirrel](https://github.com/Masterminds/squirrel) imports with `github.com/bored-engineer/safe-squirrel` instead.
 
 # Why?
 The [squirrel](https://github.com/Masterminds/squirrel) package already encourages the use of [parameterized queries (aka placeholders)](https://cheatsheetseries.owasp.org/cheatsheets/Query_Parameterization_Cheat_Sheet.html) to avoid the risk of [SQL injection](https://owasp.org/www-community/attacks/SQL_Injection) in, ex:
