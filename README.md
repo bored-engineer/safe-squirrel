@@ -1,142 +1,63 @@
-[![Stability: Maintenance](https://masterminds.github.io/stability/maintenance.svg)](https://masterminds.github.io/stability/maintenance.html)
-### Squirrel is "complete".
-Bug fixes will still be merged (slowly). Bug reports are welcome, but I will not necessarily respond to them. If another fork (or substantially similar project) actively improves on what Squirrel does, let me know and I may link to it here.
+# Safe Squirrel - fluent SQL generator for Go [![Go Reference](https://pkg.go.dev/badge/github.com/bored-engineer/safe-squirrel.svg)](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel)
+"safe" squirrel is a _fork_ of [github.com/Masterminds/squirrel](https://github.com/Masterminds/squirrel) that enforces more secure/safe usage via the Golang type system. 
 
+It can be adopted as a drop-in replacement ([caveat](#caveats)) for squirrel just by changing the replacing the import with `github.com/bored-engineer/safe-squirrel`.
 
-# Squirrel - fluent SQL generator for Go
-
+# Why?
+The [squirrel](https://github.com/Masterminds/squirrel) package already encourages the use of [parameterized queries (aka placeholders)](https://cheatsheetseries.owasp.org/cheatsheets/Query_Parameterization_Cheat_Sheet.html) to avoid the risk of [SQL injection](https://owasp.org/www-community/attacks/SQL_Injection) in, ex:
 ```go
-import "github.com/Masterminds/squirrel"
+username := "bored-engineer" // untrusted input
+
+// "SELECT * FROM users WHERE github = ?"
+sq.Select("*").From("users").Where(sq.Eq{"github": username}).ToSql()
 ```
-
-
-[![GoDoc](https://godoc.org/github.com/Masterminds/squirrel?status.png)](https://godoc.org/github.com/Masterminds/squirrel)
-[![Build Status](https://api.travis-ci.org/Masterminds/squirrel.svg?branch=master)](https://travis-ci.org/Masterminds/squirrel)
-
-**Squirrel is not an ORM.** For an application of Squirrel, check out
-[structable, a table-struct mapper](https://github.com/Masterminds/structable)
-
-
-Squirrel helps you build SQL queries from composable parts:
-
+However, not all methods/parameters is safe/protected against SQL injection, ex:
 ```go
-import sq "github.com/Masterminds/squirrel"
+provider := "is_superadmin=true OR github" // untrusted input
+username := "uh oh" // untrusted input
 
-users := sq.Select("*").From("users").Join("emails USING (email_id)")
-
-active := users.Where(sq.Eq{"deleted_at": nil})
-
-sql, args, err := active.ToSql()
-
-sql == "SELECT * FROM users JOIN emails USING (email_id) WHERE deleted_at IS NULL"
+// "SELECT * FROM users WHERE is_superadmin=true OR github = ?"
+sq.Select("*").From("users").Where(sq.Eq{provider: username}).ToSql()
 ```
+While this is a contrived example, [SQL injection](https://owasp.org/www-community/attacks/SQL_Injection) vulnerabilities have been found in real-world applications/services that use [squirrel](https://github.com/Masterminds/squirrel) due to incorrect usage of these APIs.
 
+# How?
+By taking advantage of the Golang type system/compiler, it is possible to create a function that will _only_ accept a `const` string at compile-time, ex:
 ```go
-sql, args, err := sq.
-    Insert("users").Columns("name", "age").
-    Values("moe", 13).Values("larry", sq.Expr("? + 5", 12)).
-    ToSql()
+type stringConst string
 
-sql == "INSERT INTO users (name,age) VALUES (?,?),(?,? + 5)"
-```
-
-Squirrel can also execute queries directly:
-
-```go
-stooges := users.Where(sq.Eq{"username": []string{"moe", "larry", "curly", "shemp"}})
-three_stooges := stooges.Limit(3)
-rows, err := three_stooges.RunWith(db).Query()
-
-// Behaves like:
-rows, err := db.Query("SELECT * FROM users WHERE username IN (?,?,?,?) LIMIT 3",
-                      "moe", "larry", "curly", "shemp")
-```
-
-Squirrel makes conditional query building a breeze:
-
-```go
-if len(q) > 0 {
-    users = users.Where("name LIKE ?", fmt.Sprint("%", q, "%"))
+func refuseDynamicStrings(foo stringConst) {
+    println(foo)
 }
 ```
 
-Squirrel wants to make your life easier:
-
+When this function is invoked Golang will automatically cast `const` strings to the private (otherwise inaccessible) `stringConst` type:
 ```go
-// StmtCache caches Prepared Stmts for you
-dbCache := sq.NewStmtCache(db)
-
-// StatementBuilder keeps your syntax neat
-mydb := sq.StatementBuilder.RunWith(dbCache)
-select_users := mydb.Select("*").From("users")
+pkg.refuseDynamicStrings("this is an implicit const string")
+const foo = "this is an explicit const string"
+pkg.refuseDynamicStrings(foo)
 ```
 
-Squirrel loves PostgreSQL:
-
+However, if we try to pass a dynamic string (such as one generated from user input), it will fail to build/compile:
 ```go
-psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
-
-// You use question marks for placeholders...
-sql, _, _ := psql.Select("*").From("elephants").Where("name IN (?,?)", "Dumbo", "Verna").ToSql()
-
-/// ...squirrel replaces them using PlaceholderFormat.
-sql == "SELECT * FROM elephants WHERE name IN ($1,$2)"
-
-
-/// You can retrieve id ...
-query := sq.Insert("nodes").
-    Columns("uuid", "type", "data").
-    Values(node.Uuid, node.Type, node.Data).
-    Suffix("RETURNING \"id\"").
-    RunWith(m.db).
-    PlaceholderFormat(sq.Dollar)
-
-query.QueryRow().Scan(&node.id)
+var bar = fmt.Sprintf("this is a %s string", "dynamic")
+pkg.refuseDynamicStrings(bar) // cannot use bar (variable of type string) as stringConst value in argument to refuseDynamicStrings
 ```
 
-You can escape question marks by inserting two question marks:
+This package/fork takes advantage of this "feature" to enforce that all parameters passed to [squirrel](https://github.com/Masterminds/squirrel) are `const` strings at compile-time. APIs that are already secure due to their use of [parameterized queries](https://cheatsheetseries.owasp.org/cheatsheets/Query_Parameterization_Cheat_Sheet.html) like `sq.Expr("foo = ?", untrustedStringVar)` or `sq.Eq{"column": untrustedStringVar}` continue to work as-is, accepting dynamic values on the relevant types.
 
-```sql
-SELECT * FROM nodes WHERE meta->'format' ??| array[?,?]
+# Caveats
+Most of the [squirrel](https://github.com/Masterminds/squirrel) APIs were directly converted from `string` to `stringConst` requiring no refactoring for an application to adopt this fork. However, the [Where](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel#SelectBuilder.Where), [Having](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel#SelectBuilder.Having) and [Case](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel#Case) APIs now only accept a [Sqlizer](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel#Sqlizer) type. If you were previously using the less common `(sql string, args ...interface{})` invocation, some simple refactoring to insert [sq.Expr(...)](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel#Expr) will be required, ex:
+```go
+// before
+builder.Where("foo = ?", untrustedStringVar)
+
+// after
+builder.Where(sq.Expr("foo = ?", untrustedStringVar))
+```
+Notably this is _not_ required if the application is already using the comparison types from [squirrel](https://github.com/Masterminds/squirrel), ex:
+```go
+builder.Where(sq.Eq{"foo": untrustedStringVar})
 ```
 
-will generate with the Dollar Placeholder:
-
-```sql
-SELECT * FROM nodes WHERE meta->'format' ?| array[$1,$2]
-```
-
-## FAQ
-
-* **How can I build an IN query on composite keys / tuples, e.g. `WHERE (col1, col2) IN ((1,2),(3,4))`? ([#104](https://github.com/Masterminds/squirrel/issues/104))**
-
-    Squirrel does not explicitly support tuples, but you can get the same effect with e.g.:
-
-    ```go
-    sq.Or{
-      sq.Eq{"col1": 1, "col2": 2},
-      sq.Eq{"col1": 3, "col2": 4}}
-    ```
-
-    ```sql
-    WHERE (col1 = 1 AND col2 = 2) OR (col1 = 3 AND col2 = 4)
-    ```
-
-    (which should produce the same query plan as the tuple version)
-
-* **Why doesn't `Eq{"mynumber": []uint8{1,2,3}}` turn into an `IN` query? ([#114](https://github.com/Masterminds/squirrel/issues/114))**
-
-    Values of type `[]byte` are handled specially by `database/sql`. In Go, [`byte` is just an alias of `uint8`](https://golang.org/pkg/builtin/#byte), so there is no way to distinguish `[]uint8` from `[]byte`.
-
-* **Some features are poorly documented!**
-
-    This isn't a frequent complaints section!
-
-* **Some features are poorly documented?**
-
-    Yes. The tests should be considered a part of the documentation; take a look at those for ideas on how to express more complex queries.
-
-## License
-
-Squirrel is released under the
-[MIT License](http://www.opensource.org/licenses/MIT).
+If an unsafe/insecure [Sqlizer](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel#Sqlizer) that was defined outside of the `safe-squirrel` package is used, this _could_ still result in a [SQL injection](https://owasp.org/www-community/attacks/SQL_Injection) vulnerability as the value returned by `ToSql` is used as-is.
