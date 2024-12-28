@@ -60,4 +60,12 @@ Notably this is _not_ required if the application is already using the compariso
 builder.Where(sq.Eq{"foo": untrustedStringVar})
 ```
 
-If an unsafe/insecure [Sqlizer](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel#Sqlizer) that was defined outside of the `safe-squirrel` package is used, this _could_ still result in a [SQL injection](https://owasp.org/www-community/attacks/SQL_Injection) vulnerability as the value returned by `ToSql` is used as-is.
+Finally, if an unsafe/insecure [Sqlizer](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel#Sqlizer) that was defined outside of the `safe-squirrel` package is used, this _could_ still result in a [SQL injection](https://owasp.org/www-community/attacks/SQL_Injection) vulnerability as the value returned by `ToSql` is used as-is.
+
+# Exceptions
+While rare, sometimes a dynamic string is still required/expected, such as loading the name of a SQL table from a configuration file (at runtime). To support these use-cases, a [DangerouslyCastDynamicStringToSQL](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel#DangerouslyCastDynamicStringToSQL] method is exposed which should be used with extreme caution, ex:
+```go
+table := sq.DangerouslyCastDynamicStringToSQL(cfg.TableName)
+
+sq.Select("*").From(table).Where(sq.Eq{"github": "bored-engineer"}).ToSql()
+```
