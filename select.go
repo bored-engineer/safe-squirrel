@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"strings"
 
 	"github.com/lann/builder"
 )
@@ -13,12 +12,12 @@ type selectData struct {
 	PlaceholderFormat PlaceholderFormat
 	RunWith           BaseRunner
 	Prefixes          []Sqlizer
-	Options           []string
+	Options           []stringConst
 	Columns           []Sqlizer
 	From              Sqlizer
 	Joins             []Sqlizer
 	WhereParts        []Sqlizer
-	GroupBys          []string
+	GroupBys          []stringConst
 	HavingParts       []Sqlizer
 	OrderByParts      []Sqlizer
 	Limit             string
@@ -81,8 +80,10 @@ func (d *selectData) toSqlRaw() (sqlStr string, args []interface{}, err error) {
 	sql.WriteString("SELECT ")
 
 	if len(d.Options) > 0 {
-		sql.WriteString(strings.Join(d.Options, " "))
-		sql.WriteString(" ")
+		for _, val := range d.Options {
+			sql.WriteString(string(val))
+			sql.WriteString(" ")
+		}
 	}
 
 	if len(d.Columns) > 0 {
@@ -118,7 +119,12 @@ func (d *selectData) toSqlRaw() (sqlStr string, args []interface{}, err error) {
 
 	if len(d.GroupBys) > 0 {
 		sql.WriteString(" GROUP BY ")
-		sql.WriteString(strings.Join(d.GroupBys, ", "))
+		for idx, val := range d.GroupBys {
+			if idx != 0 {
+				sql.WriteString(", ")
+			}
+			sql.WriteString(string(val))
+		}
 	}
 
 	if len(d.HavingParts) > 0 {
@@ -234,7 +240,7 @@ func (b SelectBuilder) MustSql() (string, []interface{}) {
 }
 
 // Prefix adds an expression to the beginning of the query
-func (b SelectBuilder) Prefix(sql string, args ...interface{}) SelectBuilder {
+func (b SelectBuilder) Prefix(sql stringConst, args ...interface{}) SelectBuilder {
 	return b.PrefixExpr(Expr(sql, args...))
 }
 
@@ -249,15 +255,15 @@ func (b SelectBuilder) Distinct() SelectBuilder {
 }
 
 // Options adds select option to the query
-func (b SelectBuilder) Options(options ...string) SelectBuilder {
+func (b SelectBuilder) Options(options ...stringConst) SelectBuilder {
 	return builder.Extend(b, "Options", options).(SelectBuilder)
 }
 
 // Columns adds result columns to the query.
-func (b SelectBuilder) Columns(columns ...string) SelectBuilder {
-	parts := make([]interface{}, 0, len(columns))
+func (b SelectBuilder) Columns(columns ...stringConst) SelectBuilder {
+	parts := make([]Sqlizer, 0, len(columns))
 	for _, str := range columns {
-		parts = append(parts, newPart(str))
+		parts = append(parts, str)
 	}
 	return builder.Extend(b, "Columns", parts).(SelectBuilder)
 }
@@ -274,50 +280,50 @@ func (b SelectBuilder) RemoveColumns() SelectBuilder {
 // the columns string, for example:
 //
 //	Column("IF(col IN ("+squirrel.Placeholders(3)+"), 1, 0) as col", 1, 2, 3)
-func (b SelectBuilder) Column(column interface{}, args ...interface{}) SelectBuilder {
-	return builder.Append(b, "Columns", newPart(column, args...)).(SelectBuilder)
+func (b SelectBuilder) Column(expr Sqlizer) SelectBuilder {
+	return builder.Append(b, "Columns", expr).(SelectBuilder)
 }
 
 // From sets the FROM clause of the query.
-func (b SelectBuilder) From(from string) SelectBuilder {
-	return builder.Set(b, "From", newPart(from)).(SelectBuilder)
+func (b SelectBuilder) From(from stringConst) SelectBuilder {
+	return builder.Set(b, "From", from).(SelectBuilder)
 }
 
 // FromSelect sets a subquery into the FROM clause of the query.
-func (b SelectBuilder) FromSelect(from SelectBuilder, alias string) SelectBuilder {
+func (b SelectBuilder) FromSelect(from SelectBuilder, alias stringConst) SelectBuilder {
 	// Prevent misnumbered parameters in nested selects (#183).
 	from = from.PlaceholderFormat(Question)
 	return builder.Set(b, "From", Alias(from, alias)).(SelectBuilder)
 }
 
 // JoinClause adds a join clause to the query.
-func (b SelectBuilder) JoinClause(pred interface{}, args ...interface{}) SelectBuilder {
-	return builder.Append(b, "Joins", newPart(pred, args...)).(SelectBuilder)
+func (b SelectBuilder) JoinClause(expr Sqlizer) SelectBuilder {
+	return builder.Append(b, "Joins", expr).(SelectBuilder)
 }
 
 // Join adds a JOIN clause to the query.
-func (b SelectBuilder) Join(join string, rest ...interface{}) SelectBuilder {
-	return b.JoinClause("JOIN "+join, rest...)
+func (b SelectBuilder) Join(join stringConst, rest ...interface{}) SelectBuilder {
+	return b.JoinClause(Expr("JOIN "+join, rest...))
 }
 
 // LeftJoin adds a LEFT JOIN clause to the query.
-func (b SelectBuilder) LeftJoin(join string, rest ...interface{}) SelectBuilder {
-	return b.JoinClause("LEFT JOIN "+join, rest...)
+func (b SelectBuilder) LeftJoin(join stringConst, rest ...interface{}) SelectBuilder {
+	return b.JoinClause(Expr("LEFT JOIN "+join, rest...))
 }
 
 // RightJoin adds a RIGHT JOIN clause to the query.
-func (b SelectBuilder) RightJoin(join string, rest ...interface{}) SelectBuilder {
-	return b.JoinClause("RIGHT JOIN "+join, rest...)
+func (b SelectBuilder) RightJoin(join stringConst, rest ...interface{}) SelectBuilder {
+	return b.JoinClause(Expr("RIGHT JOIN "+join, rest...))
 }
 
 // InnerJoin adds a INNER JOIN clause to the query.
-func (b SelectBuilder) InnerJoin(join string, rest ...interface{}) SelectBuilder {
-	return b.JoinClause("INNER JOIN "+join, rest...)
+func (b SelectBuilder) InnerJoin(join stringConst, rest ...interface{}) SelectBuilder {
+	return b.JoinClause(Expr("INNER JOIN "+join, rest...))
 }
 
 // CrossJoin adds a CROSS JOIN clause to the query.
-func (b SelectBuilder) CrossJoin(join string, rest ...interface{}) SelectBuilder {
-	return b.JoinClause("CROSS JOIN "+join, rest...)
+func (b SelectBuilder) CrossJoin(join stringConst, rest ...interface{}) SelectBuilder {
+	return b.JoinClause(Expr("CROSS JOIN "+join, rest...))
 }
 
 // Where adds an expression to the WHERE clause of the query.
@@ -340,32 +346,35 @@ func (b SelectBuilder) CrossJoin(join string, rest ...interface{}) SelectBuilder
 // are ANDed together.
 //
 // Where will panic if pred isn't any of the above types.
-func (b SelectBuilder) Where(pred interface{}, args ...interface{}) SelectBuilder {
-	if pred == nil || pred == "" {
+func (b SelectBuilder) Where(expr Sqlizer) SelectBuilder {
+	if expr == nil {
 		return b
 	}
-	return builder.Append(b, "WhereParts", newWherePart(pred, args...)).(SelectBuilder)
+	return builder.Append(b, "WhereParts", expr).(SelectBuilder)
 }
 
 // GroupBy adds GROUP BY expressions to the query.
-func (b SelectBuilder) GroupBy(groupBys ...string) SelectBuilder {
+func (b SelectBuilder) GroupBy(groupBys ...stringConst) SelectBuilder {
 	return builder.Extend(b, "GroupBys", groupBys).(SelectBuilder)
 }
 
 // Having adds an expression to the HAVING clause of the query.
 //
 // See Where.
-func (b SelectBuilder) Having(pred interface{}, rest ...interface{}) SelectBuilder {
-	return builder.Append(b, "HavingParts", newWherePart(pred, rest...)).(SelectBuilder)
+func (b SelectBuilder) Having(expr Sqlizer) SelectBuilder {
+	if expr == nil {
+		return b
+	}
+	return builder.Append(b, "HavingParts", expr).(SelectBuilder)
 }
 
 // OrderByClause adds ORDER BY clause to the query.
-func (b SelectBuilder) OrderByClause(pred interface{}, args ...interface{}) SelectBuilder {
-	return builder.Append(b, "OrderByParts", newPart(pred, args...)).(SelectBuilder)
+func (b SelectBuilder) OrderByClause(expr Sqlizer) SelectBuilder {
+	return builder.Append(b, "OrderByParts", expr).(SelectBuilder)
 }
 
 // OrderBy adds ORDER BY expressions to the query.
-func (b SelectBuilder) OrderBy(orderBys ...string) SelectBuilder {
+func (b SelectBuilder) OrderBy(orderBys ...stringConst) SelectBuilder {
 	for _, orderBy := range orderBys {
 		b = b.OrderByClause(orderBy)
 	}
@@ -394,7 +403,7 @@ func (b SelectBuilder) RemoveOffset() SelectBuilder {
 }
 
 // Suffix adds an expression to the end of the query
-func (b SelectBuilder) Suffix(sql string, args ...interface{}) SelectBuilder {
+func (b SelectBuilder) Suffix(sql stringConst, args ...interface{}) SelectBuilder {
 	return b.SuffixExpr(Expr(sql, args...))
 }
 

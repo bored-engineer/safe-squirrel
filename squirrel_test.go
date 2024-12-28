@@ -109,7 +109,7 @@ func TestDebugSqlizerUpdateQuestion(t *testing.T) {
 	assert.Equal(t, expectedDebugUpateSQL, DebugSqlizer(testDebugUpdateSQL))
 }
 
-var testDebugDeleteSQL = Delete("table").Where(And{
+var testDebugDeleteSQL = Delete("table").WhereExpr(And{
 	Eq{"column": "val"},
 	Eq{"other": 1},
 })

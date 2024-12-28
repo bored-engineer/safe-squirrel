@@ -1,33 +1,8 @@
 package squirrel
 
 import (
-	"fmt"
 	"io"
 )
-
-type part struct {
-	pred interface{}
-	args []interface{}
-}
-
-func newPart(pred interface{}, args ...interface{}) Sqlizer {
-	return &part{pred, args}
-}
-
-func (p part) ToSql() (sql string, args []interface{}, err error) {
-	switch pred := p.pred.(type) {
-	case nil:
-		// no-op
-	case Sqlizer:
-		sql, args, err = nestedToSql(pred)
-	case string:
-		sql = pred
-		args = p.args
-	default:
-		err = fmt.Errorf("expected string or Sqlizer, not %T", pred)
-	}
-	return
-}
 
 func nestedToSql(s Sqlizer) (string, []interface{}, error) {
 	if raw, ok := s.(rawSqlizer); ok {

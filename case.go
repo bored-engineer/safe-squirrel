@@ -48,8 +48,8 @@ type whenPart struct {
 	then Sqlizer
 }
 
-func newWhenPart(when interface{}, then interface{}) whenPart {
-	return whenPart{newPart(when), newPart(then)}
+func newWhenPart(when Sqlizer, then Sqlizer) whenPart {
+	return whenPart{when, then}
 }
 
 // caseData holds all the data required to build a CASE SQL construct
@@ -111,18 +111,18 @@ func (b CaseBuilder) MustSql() (string, []interface{}) {
 }
 
 // what sets optional value for CASE construct "CASE [value] ..."
-func (b CaseBuilder) what(expr interface{}) CaseBuilder {
-	return builder.Set(b, "What", newPart(expr)).(CaseBuilder)
+func (b CaseBuilder) what(expr Sqlizer) CaseBuilder {
+	return builder.Set(b, "What", expr).(CaseBuilder)
 }
 
 // When adds "WHEN ... THEN ..." part to CASE construct
-func (b CaseBuilder) When(when interface{}, then interface{}) CaseBuilder {
+func (b CaseBuilder) When(when Sqlizer, then Sqlizer) CaseBuilder {
 	// TODO: performance hint: replace slice of WhenPart with just slice of parts
 	// where even indices of the slice belong to "when"s and odd indices belong to "then"s
 	return builder.Append(b, "WhenParts", newWhenPart(when, then)).(CaseBuilder)
 }
 
 // What sets optional "ELSE ..." part for CASE construct
-func (b CaseBuilder) Else(expr interface{}) CaseBuilder {
-	return builder.Set(b, "Else", newPart(expr)).(CaseBuilder)
+func (b CaseBuilder) Else(expr Sqlizer) CaseBuilder {
+	return builder.Set(b, "Else", expr).(CaseBuilder)
 }

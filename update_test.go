@@ -12,10 +12,10 @@ func TestUpdateBuilderToSql(t *testing.T) {
 		Table("a").
 		Set("b", Expr("? + 1", 1)).
 		SetMap(Eq{"c": 2}).
-		Set("c1", Case("status").When("1", "2").When("2", "1")).
-		Set("c2", Case().When("a = 2", Expr("?", "foo")).When("a = 3", Expr("?", "bar"))).
+		Set("c1", Case(Expr("status")).When(Expr("1"), Expr("2")).When(Expr("2"), Expr("1"))).
+		Set("c2", Case().When(Expr("a = 2"), Expr("?", "foo")).When(Expr("a = 3"), Expr("?", "bar"))).
 		Set("c3", Select("a").From("b")).
-		Where("d = ?", 3).
+		Where(Expr("d = ?", 3)).
 		OrderBy("e").
 		Limit(4).
 		Offset(5).
@@ -84,7 +84,7 @@ func TestUpdateBuilderNoRunner(t *testing.T) {
 }
 
 func TestUpdateBuilderFrom(t *testing.T) {
-	sql, _, err := Update("employees").Set("sales_count", 100).From("accounts").Where("accounts.name = ?", "ACME").ToSql()
+	sql, _, err := Update("employees").Set("sales_count", 100).From("accounts").Where(Expr("accounts.name = ?", "ACME")).ToSql()
 	assert.NoError(t, err)
 	assert.Equal(t, "UPDATE employees SET sales_count = ? FROM accounts WHERE accounts.name = ?", sql)
 }
@@ -94,8 +94,8 @@ func TestUpdateBuilderFromSelect(t *testing.T) {
 		Set("sales_count", 100).
 		FromSelect(Select("id").
 			From("accounts").
-			Where("accounts.name = ?", "ACME"), "subquery").
-		Where("employees.account_id = subquery.id").ToSql()
+			Where(Expr("accounts.name = ?", "ACME")), "subquery").
+		Where(Expr("employees.account_id = subquery.id")).ToSql()
 	assert.NoError(t, err)
 
 	expectedSql :=

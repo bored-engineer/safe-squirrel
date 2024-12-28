@@ -16,10 +16,10 @@ type insertData struct {
 	PlaceholderFormat PlaceholderFormat
 	RunWith           BaseRunner
 	Prefixes          []Sqlizer
-	StatementKeyword  string
-	Options           []string
-	Into              string
-	Columns           []string
+	StatementKeyword  stringConst
+	Options           []stringConst
+	Into              stringConst
+	Columns           []stringConst
 	Values            [][]interface{}
 	Suffixes          []Sqlizer
 	Select            *SelectBuilder
@@ -74,22 +74,29 @@ func (d *insertData) ToSql() (sqlStr string, args []interface{}, err error) {
 	if d.StatementKeyword == "" {
 		sql.WriteString("INSERT ")
 	} else {
-		sql.WriteString(d.StatementKeyword)
+		sql.WriteString(string(d.StatementKeyword))
 		sql.WriteString(" ")
 	}
 
 	if len(d.Options) > 0 {
-		sql.WriteString(strings.Join(d.Options, " "))
-		sql.WriteString(" ")
+		for _, val := range d.Options {
+			sql.WriteString(string(val))
+			sql.WriteString(" ")
+		}
 	}
 
 	sql.WriteString("INTO ")
-	sql.WriteString(d.Into)
+	sql.WriteString(string(d.Into))
 	sql.WriteString(" ")
 
 	if len(d.Columns) > 0 {
 		sql.WriteString("(")
-		sql.WriteString(strings.Join(d.Columns, ","))
+		for idx, val := range d.Columns {
+			if idx != 0 {
+				sql.WriteString(",")
+			}
+			sql.WriteString(string(val))
+		}
 		sql.WriteString(") ")
 	}
 
@@ -227,7 +234,7 @@ func (b InsertBuilder) MustSql() (string, []interface{}) {
 }
 
 // Prefix adds an expression to the beginning of the query
-func (b InsertBuilder) Prefix(sql string, args ...interface{}) InsertBuilder {
+func (b InsertBuilder) Prefix(sql stringConst, args ...interface{}) InsertBuilder {
 	return b.PrefixExpr(Expr(sql, args...))
 }
 
@@ -237,17 +244,17 @@ func (b InsertBuilder) PrefixExpr(expr Sqlizer) InsertBuilder {
 }
 
 // Options adds keyword options before the INTO clause of the query.
-func (b InsertBuilder) Options(options ...string) InsertBuilder {
+func (b InsertBuilder) Options(options ...stringConst) InsertBuilder {
 	return builder.Extend(b, "Options", options).(InsertBuilder)
 }
 
 // Into sets the INTO clause of the query.
-func (b InsertBuilder) Into(into string) InsertBuilder {
+func (b InsertBuilder) Into(into stringConst) InsertBuilder {
 	return builder.Set(b, "Into", into).(InsertBuilder)
 }
 
 // Columns adds insert columns to the query.
-func (b InsertBuilder) Columns(columns ...string) InsertBuilder {
+func (b InsertBuilder) Columns(columns ...stringConst) InsertBuilder {
 	return builder.Extend(b, "Columns", columns).(InsertBuilder)
 }
 
@@ -257,7 +264,7 @@ func (b InsertBuilder) Values(values ...interface{}) InsertBuilder {
 }
 
 // Suffix adds an expression to the end of the query
-func (b InsertBuilder) Suffix(sql string, args ...interface{}) InsertBuilder {
+func (b InsertBuilder) Suffix(sql stringConst, args ...interface{}) InsertBuilder {
 	return b.SuffixExpr(Expr(sql, args...))
 }
 
@@ -268,13 +275,15 @@ func (b InsertBuilder) SuffixExpr(expr Sqlizer) InsertBuilder {
 
 // SetMap set columns and values for insert builder from a map of column name and value
 // note that it will reset all previous columns and values was set if any
-func (b InsertBuilder) SetMap(clauses map[string]interface{}) InsertBuilder {
+func (b InsertBuilder) SetMap(clauses map[stringConst]interface{}) InsertBuilder {
 	// Keep the columns in a consistent order by sorting the column key string.
-	cols := make([]string, 0, len(clauses))
+	cols := make([]stringConst, 0, len(clauses))
 	for col := range clauses {
 		cols = append(cols, col)
 	}
-	sort.Strings(cols)
+	sort.Slice(cols, func(idx, jdx int) bool {
+		return cols[idx] < cols[jdx]
+	})
 
 	vals := make([]interface{}, 0, len(clauses))
 	for _, col := range cols {
@@ -293,6 +302,6 @@ func (b InsertBuilder) Select(sb SelectBuilder) InsertBuilder {
 	return builder.Set(b, "Select", &sb).(InsertBuilder)
 }
 
-func (b InsertBuilder) statementKeyword(keyword string) InsertBuilder {
+func (b InsertBuilder) statementKeyword(keyword stringConst) InsertBuilder {
 	return builder.Set(b, "StatementKeyword", keyword).(InsertBuilder)
 }

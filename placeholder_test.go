@@ -32,7 +32,7 @@ func TestAtp(t *testing.T) {
 }
 
 func TestPlaceholders(t *testing.T) {
-	assert.Equal(t, Placeholders(2), "?,?")
+	assert.Equal(t, string(Placeholders(2)), "?,?")
 }
 
 func TestEscapeDollar(t *testing.T) {

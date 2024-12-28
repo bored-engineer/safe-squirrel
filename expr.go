@@ -16,7 +16,7 @@ const (
 )
 
 type expr struct {
-	sql  string
+	sql  stringConst
 	args []interface{}
 }
 
@@ -25,7 +25,7 @@ type expr struct {
 // Ex:
 //
 //	Expr("FROM_UNIXTIME(?)", t)
-func Expr(sql string, args ...interface{}) Sqlizer {
+func Expr(sql stringConst, args ...interface{}) Sqlizer {
 	return expr{sql: sql, args: args}
 }
 
@@ -37,12 +37,12 @@ func (e expr) ToSql() (sql string, args []interface{}, err error) {
 		}
 	}
 	if simple {
-		return e.sql, e.args, nil
+		return string(e.sql), e.args, nil
 	}
 
 	buf := &bytes.Buffer{}
 	ap := e.args
-	sp := e.sql
+	sp := string(e.sql)
 
 	var isql string
 	var iargs []interface{}
@@ -82,23 +82,16 @@ func (e expr) ToSql() (sql string, args []interface{}, err error) {
 	return buf.String(), append(args, ap...), err
 }
 
-type concatExpr []interface{}
+type concatExpr []Sqlizer
 
 func (ce concatExpr) ToSql() (sql string, args []interface{}, err error) {
 	for _, part := range ce {
-		switch p := part.(type) {
-		case string:
-			sql += p
-		case Sqlizer:
-			pSql, pArgs, err := p.ToSql()
-			if err != nil {
-				return "", nil, err
-			}
-			sql += pSql
-			args = append(args, pArgs...)
-		default:
-			return "", nil, fmt.Errorf("%#v is not a string or Sqlizer", part)
+		pSql, pArgs, err := part.ToSql()
+		if err != nil {
+			return "", nil, err
 		}
+		sql += pSql
+		args = append(args, pArgs...)
 	}
 	return
 }
@@ -109,14 +102,14 @@ func (ce concatExpr) ToSql() (sql string, args []interface{}, err error) {
 //
 //	name_expr := Expr("CONCAT(?, ' ', ?)", firstName, lastName)
 //	ConcatExpr("COALESCE(full_name,", name_expr, ")")
-func ConcatExpr(parts ...interface{}) concatExpr {
+func ConcatExpr(parts ...Sqlizer) concatExpr {
 	return concatExpr(parts)
 }
 
 // aliasExpr helps to alias part of SQL query generated with underlying "expr"
 type aliasExpr struct {
 	expr  Sqlizer
-	alias string
+	alias stringConst
 }
 
 // Alias allows to define alias for column in SelectBuilder. Useful when column is
@@ -124,7 +117,7 @@ type aliasExpr struct {
 // Ex:
 //
 //	.Column(Alias(caseStmt, "case_column"))
-func Alias(expr Sqlizer, alias string) aliasExpr {
+func Alias(expr Sqlizer, alias stringConst) aliasExpr {
 	return aliasExpr{expr, alias}
 }
 
@@ -137,7 +130,7 @@ func (e aliasExpr) ToSql() (sql string, args []interface{}, err error) {
 }
 
 // Eq is syntactic sugar for use with Where/Having/Set methods.
-type Eq map[string]interface{}
+type Eq map[stringConst]interface{}
 
 func (eq Eq) toSQL(useNotOpr bool) (sql string, args []interface{}, err error) {
 	if len(eq) == 0 {
@@ -227,7 +220,7 @@ func (neq NotEq) ToSql() (sql string, args []interface{}, err error) {
 // Ex:
 //
 //	.Where(Like{"name": "%irrel"})
-type Like map[string]interface{}
+type Like map[stringConst]interface{}
 
 func (lk Like) toSql(opr string) (sql string, args []interface{}, err error) {
 	var exprs []string
@@ -297,7 +290,7 @@ func (nilk NotILike) ToSql() (sql string, args []interface{}, err error) {
 // Ex:
 //
 //	.Where(Lt{"id": 1})
-type Lt map[string]interface{}
+type Lt map[stringConst]interface{}
 
 func (lt Lt) toSql(opposite, orEq bool) (sql string, args []interface{}, err error) {
 	var (
@@ -413,12 +406,14 @@ func (o Or) ToSql() (string, []interface{}, error) {
 	return conj(o).join(" OR ", sqlFalse)
 }
 
-func getSortedKeys(exp map[string]interface{}) []string {
-	sortedKeys := make([]string, 0, len(exp))
+func getSortedKeys(exp map[stringConst]interface{}) []stringConst {
+	sortedKeys := make([]stringConst, 0, len(exp))
 	for k := range exp {
 		sortedKeys = append(sortedKeys, k)
 	}
-	sort.Strings(sortedKeys)
+	sort.Slice(sortedKeys, func(idx, jdx int) bool {
+		return sortedKeys[idx] < sortedKeys[jdx]
+	})
 	return sortedKeys
 }
 

@@ -8,7 +8,7 @@ import (
 )
 
 func TestConcatExpr(t *testing.T) {
-	b := ConcatExpr("COALESCE(name,", Expr("CONCAT(?,' ',?)", "f", "l"), ")")
+	b := ConcatExpr(Expr("COALESCE(name,"), Expr("CONCAT(?,' ',?)", "f", "l"), Expr(")"))
 	sql, args, err := b.ToSql()
 	assert.NoError(t, err)
 
@@ -17,13 +17,6 @@ func TestConcatExpr(t *testing.T) {
 
 	expectedArgs := []interface{}{"f", "l"}
 	assert.Equal(t, expectedArgs, args)
-}
-
-func TestConcatExprBadType(t *testing.T) {
-	b := ConcatExpr("prefix", 123, "suffix")
-	_, _, err := b.ToSql()
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "123 is not")
 }
 
 func TestEqToSql(t *testing.T) {

@@ -20,7 +20,7 @@ func TestStatementBuilderPlaceholderFormat(t *testing.T) {
 	db := &DBStub{}
 	sb := StatementBuilder.RunWith(db).PlaceholderFormat(Dollar)
 
-	sb.Select("test").Where("x = ?").Exec()
+	sb.Select("test").Where(Expr("x = ?")).Exec()
 	assert.Equal(t, "SELECT test WHERE x = $1", db.LastExecSql)
 }
 
@@ -68,9 +68,9 @@ func TestRunWithBaseRunnerQueryRowError(t *testing.T) {
 }
 
 func TestStatementBuilderWhere(t *testing.T) {
-	sb := StatementBuilder.Where("x = ?", 1)
+	sb := StatementBuilder.Where(Expr("x = ?", 1))
 
-	sql, args, err := sb.Select("test").Where("y = ?", 2).ToSql()
+	sql, args, err := sb.Select("test").Where(Expr("y = ?", 2)).ToSql()
 	assert.NoError(t, err)
 
 	expectedSql := "SELECT test WHERE x = ? AND y = ?"

@@ -7,9 +7,9 @@ import (
 )
 
 func TestCaseWithVal(t *testing.T) {
-	caseStmt := Case("number").
-		When("1", "one").
-		When("2", "two").
+	caseStmt := Case(Expr("number")).
+		When(Expr("1"), Expr("one")).
+		When(Expr("2"), Expr("two")).
 		Else(Expr("?", "big number"))
 
 	qb := Select().
@@ -32,8 +32,8 @@ func TestCaseWithVal(t *testing.T) {
 }
 
 func TestCaseWithComplexVal(t *testing.T) {
-	caseStmt := Case("? > ?", 10, 5).
-		When("true", "'T'")
+	caseStmt := Case(Expr("? > ?", 10, 5)).
+		When(Expr("true"), Expr("'T'"))
 
 	qb := Select().
 		Column(Alias(caseStmt, "complexCase")).
@@ -54,7 +54,7 @@ func TestCaseWithComplexVal(t *testing.T) {
 
 func TestCaseWithNoVal(t *testing.T) {
 	caseStmt := Case().
-		When(Eq{"x": 0}, "x is zero").
+		When(Eq{"x": 0}, Expr("x is zero")).
 		When(Expr("x > ?", 1), Expr("CONCAT('x is greater than ', ?)", 2))
 
 	qb := Select().Column(caseStmt).From("table")
@@ -76,8 +76,8 @@ func TestCaseWithNoVal(t *testing.T) {
 
 func TestCaseWithExpr(t *testing.T) {
 	caseStmt := Case(Expr("x = ?", true)).
-		When("true", Expr("?", "it's true!")).
-		Else("42")
+		When(Expr("true"), Expr("?", "it's true!")).
+		Else(Expr("42"))
 
 	qb := Select().Column(caseStmt).From("table")
 	sql, args, err := qb.ToSql()
@@ -98,10 +98,10 @@ func TestCaseWithExpr(t *testing.T) {
 
 func TestMultipleCase(t *testing.T) {
 	caseStmtNoval := Case(Expr("x = ?", true)).
-		When("true", Expr("?", "it's true!")).
-		Else("42")
+		When(Expr("true"), Expr("?", "it's true!")).
+		Else(Expr("42"))
 	caseStmtExpr := Case().
-		When(Eq{"x": 0}, "'x is zero'").
+		When(Eq{"x": 0}, Expr("'x is zero'")).
 		When(Expr("x > ?", 1), Expr("CONCAT('x is greater than ', ?)", 2))
 
 	qb := Select().
@@ -128,8 +128,8 @@ func TestMultipleCase(t *testing.T) {
 }
 
 func TestCaseWithNoWhenClause(t *testing.T) {
-	caseStmt := Case("something").
-		Else("42")
+	caseStmt := Case(Expr("something")).
+		Else(Expr("42"))
 
 	qb := Select().Column(caseStmt).From("table")
 
@@ -146,5 +146,5 @@ func TestCaseBuilderMustSql(t *testing.T) {
 			t.Errorf("TestCaseBuilderMustSql should have panicked!")
 		}
 	}()
-	Case("").MustSql()
+	Case(Expr("")).MustSql()
 }

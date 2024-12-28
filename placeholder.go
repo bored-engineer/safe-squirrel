@@ -77,12 +77,12 @@ func (atpFormat) debugPlaceholder() string {
 }
 
 // Placeholders returns a string with count ? placeholders joined with commas.
-func Placeholders(count int) string {
+func Placeholders(count int) stringConst {
 	if count < 1 {
 		return ""
 	}
 
-	return strings.Repeat(",?", count)[1:]
+	return stringConst(strings.Repeat(",?", count)[1:])
 }
 
 func replacePositionalPlaceholders(sql, prefix string) (string, error) {

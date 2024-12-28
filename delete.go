@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"strings"
 
 	"github.com/lann/builder"
 )
@@ -13,9 +12,9 @@ type deleteData struct {
 	PlaceholderFormat PlaceholderFormat
 	RunWith           BaseRunner
 	Prefixes          []Sqlizer
-	From              string
+	From              stringConst
 	WhereParts        []Sqlizer
-	OrderBys          []string
+	OrderBys          []stringConst
 	Limit             string
 	Offset            string
 	Suffixes          []Sqlizer
@@ -46,7 +45,7 @@ func (d *deleteData) ToSql() (sqlStr string, args []interface{}, err error) {
 	}
 
 	sql.WriteString("DELETE FROM ")
-	sql.WriteString(d.From)
+	sql.WriteString(string(d.From))
 
 	if len(d.WhereParts) > 0 {
 		sql.WriteString(" WHERE ")
@@ -58,7 +57,12 @@ func (d *deleteData) ToSql() (sqlStr string, args []interface{}, err error) {
 
 	if len(d.OrderBys) > 0 {
 		sql.WriteString(" ORDER BY ")
-		sql.WriteString(strings.Join(d.OrderBys, ", "))
+		for idx, val := range d.OrderBys {
+			if idx != 0 {
+				sql.WriteString(", ")
+			}
+			sql.WriteString(string(val))
+		}
 	}
 
 	if len(d.Limit) > 0 {
@@ -132,7 +136,7 @@ func (b DeleteBuilder) MustSql() (string, []interface{}) {
 }
 
 // Prefix adds an expression to the beginning of the query
-func (b DeleteBuilder) Prefix(sql string, args ...interface{}) DeleteBuilder {
+func (b DeleteBuilder) Prefix(sql stringConst, args ...interface{}) DeleteBuilder {
 	return b.PrefixExpr(Expr(sql, args...))
 }
 
@@ -142,19 +146,26 @@ func (b DeleteBuilder) PrefixExpr(expr Sqlizer) DeleteBuilder {
 }
 
 // From sets the table to be deleted from.
-func (b DeleteBuilder) From(from string) DeleteBuilder {
+func (b DeleteBuilder) From(from stringConst) DeleteBuilder {
 	return builder.Set(b, "From", from).(DeleteBuilder)
 }
 
 // Where adds WHERE expressions to the query.
 //
 // See SelectBuilder.Where for more information.
-func (b DeleteBuilder) Where(pred interface{}, args ...interface{}) DeleteBuilder {
-	return builder.Append(b, "WhereParts", newWherePart(pred, args...)).(DeleteBuilder)
+func (b DeleteBuilder) Where(sql stringConst, args ...interface{}) DeleteBuilder {
+	return b.WhereExpr(Expr(sql, args...))
+}
+
+// Where adds WHERE expressions to the query.
+//
+// See SelectBuilder.WhereExpr for more information.
+func (b DeleteBuilder) WhereExpr(expr Sqlizer) DeleteBuilder {
+	return builder.Append(b, "WhereParts", expr).(DeleteBuilder)
 }
 
 // OrderBy adds ORDER BY expressions to the query.
-func (b DeleteBuilder) OrderBy(orderBys ...string) DeleteBuilder {
+func (b DeleteBuilder) OrderBy(orderBys ...stringConst) DeleteBuilder {
 	return builder.Extend(b, "OrderBys", orderBys).(DeleteBuilder)
 }
 
@@ -169,7 +180,7 @@ func (b DeleteBuilder) Offset(offset uint64) DeleteBuilder {
 }
 
 // Suffix adds an expression to the end of the query
-func (b DeleteBuilder) Suffix(sql string, args ...interface{}) DeleteBuilder {
+func (b DeleteBuilder) Suffix(sql stringConst, args ...interface{}) DeleteBuilder {
 	return b.SuffixExpr(Expr(sql, args...))
 }
 
