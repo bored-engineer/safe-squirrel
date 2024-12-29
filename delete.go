@@ -153,14 +153,7 @@ func (b DeleteBuilder) From(from stringConst) DeleteBuilder {
 // Where adds WHERE expressions to the query.
 //
 // See SelectBuilder.Where for more information.
-func (b DeleteBuilder) Where(sql stringConst, args ...interface{}) DeleteBuilder {
-	return b.WhereExpr(Expr(sql, args...))
-}
-
-// Where adds WHERE expressions to the query.
-//
-// See SelectBuilder.WhereExpr for more information.
-func (b DeleteBuilder) WhereExpr(expr Sqlizer) DeleteBuilder {
+func (b DeleteBuilder) Where(expr Sqlizer) DeleteBuilder {
 	return builder.Append(b, "WhereParts", expr).(DeleteBuilder)
 }
 
