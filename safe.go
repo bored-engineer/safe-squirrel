@@ -14,3 +14,6 @@ func (s stringConst) ToSql() (sqlStr string, args []interface{}, err error) {
 func DangerouslyCastDynamicStringToSQL(val string) stringConst {
 	return stringConst(val)
 }
+
+// SetMap can be passed to the SetMap function in various builders
+type SetMap map[stringConst]interface{}
