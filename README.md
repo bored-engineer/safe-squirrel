@@ -26,14 +26,14 @@ This package aims to systemically prevent these [SQL injection](https://owasp.or
 # How?
 By taking advantage of the Golang type system/compiler, it is possible to create a function that will _only_ accept a `const` string at compile-time, ex:
 ```go
-type stringConst string
+type safeString string
 
-func refuseDynamicStrings(foo stringConst) {
+func refuseDynamicStrings(foo safeString) {
     println(foo)
 }
 ```
 
-When this function is invoked Golang will automatically cast `const` strings to the private (otherwise inaccessible) `stringConst` type:
+When this function is invoked Golang will automatically cast `const` strings to the private (otherwise inaccessible) `safeString` type:
 ```go
 pkg.refuseDynamicStrings("this is an implicit const string")
 const foo = "this is an explicit const string"
@@ -43,13 +43,13 @@ pkg.refuseDynamicStrings(foo)
 However, if we try to pass a dynamic string (such as one generated from user input), it will fail to build/compile:
 ```go
 var bar = fmt.Sprintf("this is a %s string", "dynamic")
-pkg.refuseDynamicStrings(bar) // cannot use bar (variable of type string) as stringConst value in argument to refuseDynamicStrings
+pkg.refuseDynamicStrings(bar) // cannot use bar (variable of type string) as safeString value in argument to refuseDynamicStrings
 ```
 
 This package/fork takes advantage of this "feature" to enforce that all parameters passed to [squirrel](https://github.com/Masterminds/squirrel) are `const` strings at compile-time. APIs that are already secure due to their use of [parameterized queries](https://cheatsheetseries.owasp.org/cheatsheets/Query_Parameterization_Cheat_Sheet.html) like `sq.Expr("foo = ?", untrustedStringVar)` or `sq.Eq{"column": untrustedStringVar}` continue to work as-is, accepting dynamic values on the relevant types.
 
 # Caveats
-Most of the [squirrel](https://github.com/Masterminds/squirrel) APIs were directly converted from `string` to `stringConst` requiring no refactoring for an application to adopt this fork. However, the [Where](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel#SelectBuilder.Where), [Having](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel#SelectBuilder.Having) and [Case](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel#Case) APIs now only accept a [Sqlizer](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel#Sqlizer) type. If you were previously using the less common `(sql string, args ...interface{})` invocation, some simple refactoring to insert [sq.Expr(...)](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel#Expr) will be required, ex:
+Most of the [squirrel](https://github.com/Masterminds/squirrel) APIs were directly converted from `string` to `safeString` requiring no refactoring for an application to adopt this fork. However, the [Where](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel#SelectBuilder.Where), [Having](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel#SelectBuilder.Having) and [Case](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel#Case) APIs now only accept a [Sqlizer](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel#Sqlizer) type. If you were previously using the less common `(sql string, args ...interface{})` invocation, some simple refactoring to insert [sq.Expr(...)](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel#Expr) will be required, ex:
 ```go
 // before
 builder.Where("foo = ?", untrustedStringVar)
@@ -65,9 +65,9 @@ builder.Where(sq.Eq{"foo": untrustedStringVar})
 Finally, if an unsafe/insecure [Sqlizer](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel#Sqlizer) that was defined outside of the `safe-squirrel` package is used, this _could_ still result in a [SQL injection](https://owasp.org/www-community/attacks/SQL_Injection) vulnerability as the value returned by `ToSql` is used as-is.
 
 # Exceptions
-While rare, sometimes a dynamic string is still required/expected, such as loading the name of a SQL table from a configuration file (at runtime). To support these use-cases, a [DangerouslyCastDynamicStringToStringConst](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel#DangerouslyCastDynamicStringToStringConst) method is exposed which should be used with extreme caution, ex:
+While rare, sometimes a dynamic string is still required/expected, such as loading the name of a SQL table from a configuration file (at runtime). To support these use-cases, a [DangerouslyCastDynamicStringToSafeString](https://pkg.go.dev/github.com/bored-engineer/safe-squirrel#DangerouslyCastDynamicStringToSafeString) method is exposed which should be used with extreme caution, ex:
 ```go
-table := sq.DangerouslyCastDynamicStringToStringConst(cfg.TableName)
+table := sq.DangerouslyCastDynamicStringToSafeString(cfg.TableName)
 
 sq.Select("*").From(table).Where(sq.Eq{"github": "bored-engineer"}).ToSql()
 ```

@@ -6,28 +6,28 @@ import "github.com/lann/builder"
 type StatementBuilderType builder.Builder
 
 // Select returns a SelectBuilder for this StatementBuilderType.
-func (b StatementBuilderType) Select(columns ...stringConst) SelectBuilder {
+func (b StatementBuilderType) Select(columns ...safeString) SelectBuilder {
 	return SelectBuilder(b).Columns(columns...)
 }
 
 // Insert returns a InsertBuilder for this StatementBuilderType.
-func (b StatementBuilderType) Insert(into stringConst) InsertBuilder {
+func (b StatementBuilderType) Insert(into safeString) InsertBuilder {
 	return InsertBuilder(b).Into(into)
 }
 
 // Replace returns a InsertBuilder for this StatementBuilderType with the
 // statement keyword set to "REPLACE".
-func (b StatementBuilderType) Replace(into stringConst) InsertBuilder {
+func (b StatementBuilderType) Replace(into safeString) InsertBuilder {
 	return InsertBuilder(b).statementKeyword("REPLACE").Into(into)
 }
 
 // Update returns a UpdateBuilder for this StatementBuilderType.
-func (b StatementBuilderType) Update(table stringConst) UpdateBuilder {
+func (b StatementBuilderType) Update(table safeString) UpdateBuilder {
 	return UpdateBuilder(b).Table(table)
 }
 
 // Delete returns a DeleteBuilder for this StatementBuilderType.
-func (b StatementBuilderType) Delete(from stringConst) DeleteBuilder {
+func (b StatementBuilderType) Delete(from safeString) DeleteBuilder {
 	return DeleteBuilder(b).From(from)
 }
 
@@ -54,14 +54,14 @@ var StatementBuilder = StatementBuilderType(builder.EmptyBuilder).PlaceholderFor
 // Select returns a new SelectBuilder, optionally setting some result columns.
 //
 // See SelectBuilder.Columns.
-func Select(columns ...stringConst) SelectBuilder {
+func Select(columns ...safeString) SelectBuilder {
 	return StatementBuilder.Select(columns...)
 }
 
 // Insert returns a new InsertBuilder with the given table name.
 //
 // See InsertBuilder.Into.
-func Insert(into stringConst) InsertBuilder {
+func Insert(into safeString) InsertBuilder {
 	return StatementBuilder.Insert(into)
 }
 
@@ -69,21 +69,21 @@ func Insert(into stringConst) InsertBuilder {
 // "REPLACE" and with the given table name.
 //
 // See InsertBuilder.Into.
-func Replace(into stringConst) InsertBuilder {
+func Replace(into safeString) InsertBuilder {
 	return StatementBuilder.Replace(into)
 }
 
 // Update returns a new UpdateBuilder with the given table name.
 //
 // See UpdateBuilder.Table.
-func Update(table stringConst) UpdateBuilder {
+func Update(table safeString) UpdateBuilder {
 	return StatementBuilder.Update(table)
 }
 
 // Delete returns a new DeleteBuilder with the given table name.
 //
 // See DeleteBuilder.Table.
-func Delete(from stringConst) DeleteBuilder {
+func Delete(from safeString) DeleteBuilder {
 	return StatementBuilder.Delete(from)
 }
 

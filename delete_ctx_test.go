@@ -11,7 +11,7 @@ import (
 
 func TestDeleteBuilderContextRunners(t *testing.T) {
 	db := &DBStub{}
-	b := Delete("test").Where("x = ?", 1).RunWith(db)
+	b := Delete("test").Where(Expr("x = ?", 1)).RunWith(db)
 
 	expectedSql := "DELETE FROM test WHERE x = ?"
 
@@ -29,7 +29,7 @@ func TestDeleteBuilderContextRunners(t *testing.T) {
 }
 
 func TestDeleteBuilderContextNoRunner(t *testing.T) {
-	b := Delete("test").Where("x != ?", 0).Suffix("RETURNING x")
+	b := Delete("test").Where(Expr("x != ?", 0)).Suffix("RETURNING x")
 
 	_, err := b.ExecContext(ctx)
 	assert.Equal(t, RunnerNotSet, err)

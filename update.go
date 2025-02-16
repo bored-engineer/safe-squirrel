@@ -14,18 +14,18 @@ type updateData struct {
 	PlaceholderFormat PlaceholderFormat
 	RunWith           BaseRunner
 	Prefixes          []Sqlizer
-	Table             stringConst
+	Table             safeString
 	SetClauses        []setClause
 	From              Sqlizer
 	WhereParts        []Sqlizer
-	OrderBys          []stringConst
+	OrderBys          []safeString
 	Limit             string
 	Offset            string
 	Suffixes          []Sqlizer
 }
 
 type setClause struct {
-	column stringConst
+	column safeString
 	value  interface{}
 }
 
@@ -212,7 +212,7 @@ func (b UpdateBuilder) MustSql() (string, []interface{}) {
 }
 
 // Prefix adds an expression to the beginning of the query
-func (b UpdateBuilder) Prefix(sql stringConst, args ...interface{}) UpdateBuilder {
+func (b UpdateBuilder) Prefix(sql safeString, args ...interface{}) UpdateBuilder {
 	return b.PrefixExpr(Expr(sql, args...))
 }
 
@@ -222,18 +222,18 @@ func (b UpdateBuilder) PrefixExpr(expr Sqlizer) UpdateBuilder {
 }
 
 // Table sets the table to be updated.
-func (b UpdateBuilder) Table(table stringConst) UpdateBuilder {
+func (b UpdateBuilder) Table(table safeString) UpdateBuilder {
 	return builder.Set(b, "Table", table).(UpdateBuilder)
 }
 
 // Set adds SET clauses to the query.
-func (b UpdateBuilder) Set(column stringConst, value interface{}) UpdateBuilder {
+func (b UpdateBuilder) Set(column safeString, value interface{}) UpdateBuilder {
 	return builder.Append(b, "SetClauses", setClause{column: column, value: value}).(UpdateBuilder)
 }
 
 // SetMap is a convenience method which calls .Set for each key/value pair in clauses.
-func (b UpdateBuilder) SetMap(clauses map[stringConst]interface{}) UpdateBuilder {
-	keys := make([]stringConst, len(clauses))
+func (b UpdateBuilder) SetMap(clauses map[safeString]interface{}) UpdateBuilder {
+	keys := make([]safeString, len(clauses))
 	i := 0
 	for key := range clauses {
 		keys[i] = key
@@ -251,12 +251,12 @@ func (b UpdateBuilder) SetMap(clauses map[stringConst]interface{}) UpdateBuilder
 
 // From adds FROM clause to the query
 // FROM is valid construct in postgresql only.
-func (b UpdateBuilder) From(from stringConst) UpdateBuilder {
+func (b UpdateBuilder) From(from safeString) UpdateBuilder {
 	return builder.Set(b, "From", from).(UpdateBuilder)
 }
 
 // FromSelect sets a subquery into the FROM clause of the query.
-func (b UpdateBuilder) FromSelect(from SelectBuilder, alias stringConst) UpdateBuilder {
+func (b UpdateBuilder) FromSelect(from SelectBuilder, alias safeString) UpdateBuilder {
 	// Prevent misnumbered parameters in nested selects (#183).
 	from = from.PlaceholderFormat(Question)
 	return builder.Set(b, "From", Alias(from, alias)).(UpdateBuilder)
@@ -270,7 +270,7 @@ func (b UpdateBuilder) Where(expr Sqlizer) UpdateBuilder {
 }
 
 // OrderBy adds ORDER BY expressions to the query.
-func (b UpdateBuilder) OrderBy(orderBys ...stringConst) UpdateBuilder {
+func (b UpdateBuilder) OrderBy(orderBys ...safeString) UpdateBuilder {
 	return builder.Extend(b, "OrderBys", orderBys).(UpdateBuilder)
 }
 
@@ -285,7 +285,7 @@ func (b UpdateBuilder) Offset(offset uint64) UpdateBuilder {
 }
 
 // Suffix adds an expression to the end of the query
-func (b UpdateBuilder) Suffix(sql stringConst, args ...interface{}) UpdateBuilder {
+func (b UpdateBuilder) Suffix(sql safeString, args ...interface{}) UpdateBuilder {
 	return b.SuffixExpr(Expr(sql, args...))
 }
 

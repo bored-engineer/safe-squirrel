@@ -16,7 +16,7 @@ const (
 )
 
 type expr struct {
-	sql  stringConst
+	sql  safeString
 	args []interface{}
 }
 
@@ -25,7 +25,7 @@ type expr struct {
 // Ex:
 //
 //	Expr("FROM_UNIXTIME(?)", t)
-func Expr(sql stringConst, args ...interface{}) Sqlizer {
+func Expr(sql safeString, args ...interface{}) Sqlizer {
 	return expr{sql: sql, args: args}
 }
 
@@ -109,7 +109,7 @@ func ConcatExpr(parts ...Sqlizer) concatExpr {
 // aliasExpr helps to alias part of SQL query generated with underlying "expr"
 type aliasExpr struct {
 	expr  Sqlizer
-	alias stringConst
+	alias safeString
 }
 
 // Alias allows to define alias for column in SelectBuilder. Useful when column is
@@ -117,7 +117,7 @@ type aliasExpr struct {
 // Ex:
 //
 //	.Column(Alias(caseStmt, "case_column"))
-func Alias(expr Sqlizer, alias stringConst) aliasExpr {
+func Alias(expr Sqlizer, alias safeString) aliasExpr {
 	return aliasExpr{expr, alias}
 }
 
@@ -130,7 +130,7 @@ func (e aliasExpr) ToSql() (sql string, args []interface{}, err error) {
 }
 
 // Eq is syntactic sugar for use with Where/Having/Set methods.
-type Eq map[stringConst]interface{}
+type Eq map[safeString]interface{}
 
 func (eq Eq) toSQL(useNotOpr bool) (sql string, args []interface{}, err error) {
 	if len(eq) == 0 {
@@ -220,7 +220,7 @@ func (neq NotEq) ToSql() (sql string, args []interface{}, err error) {
 // Ex:
 //
 //	.Where(Like{"name": "%irrel"})
-type Like map[stringConst]interface{}
+type Like map[safeString]interface{}
 
 func (lk Like) toSql(opr string) (sql string, args []interface{}, err error) {
 	var exprs []string
@@ -290,7 +290,7 @@ func (nilk NotILike) ToSql() (sql string, args []interface{}, err error) {
 // Ex:
 //
 //	.Where(Lt{"id": 1})
-type Lt map[stringConst]interface{}
+type Lt map[safeString]interface{}
 
 func (lt Lt) toSql(opposite, orEq bool) (sql string, args []interface{}, err error) {
 	var (
@@ -406,8 +406,8 @@ func (o Or) ToSql() (string, []interface{}, error) {
 	return conj(o).join(" OR ", sqlFalse)
 }
 
-func getSortedKeys(exp map[stringConst]interface{}) []stringConst {
-	sortedKeys := make([]stringConst, 0, len(exp))
+func getSortedKeys(exp map[safeString]interface{}) []safeString {
+	sortedKeys := make([]safeString, 0, len(exp))
 	for k := range exp {
 		sortedKeys = append(sortedKeys, k)
 	}

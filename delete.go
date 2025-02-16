@@ -12,9 +12,9 @@ type deleteData struct {
 	PlaceholderFormat PlaceholderFormat
 	RunWith           BaseRunner
 	Prefixes          []Sqlizer
-	From              stringConst
+	From              safeString
 	WhereParts        []Sqlizer
-	OrderBys          []stringConst
+	OrderBys          []safeString
 	Limit             string
 	Offset            string
 	Suffixes          []Sqlizer
@@ -136,7 +136,7 @@ func (b DeleteBuilder) MustSql() (string, []interface{}) {
 }
 
 // Prefix adds an expression to the beginning of the query
-func (b DeleteBuilder) Prefix(sql stringConst, args ...interface{}) DeleteBuilder {
+func (b DeleteBuilder) Prefix(sql safeString, args ...interface{}) DeleteBuilder {
 	return b.PrefixExpr(Expr(sql, args...))
 }
 
@@ -146,7 +146,7 @@ func (b DeleteBuilder) PrefixExpr(expr Sqlizer) DeleteBuilder {
 }
 
 // From sets the table to be deleted from.
-func (b DeleteBuilder) From(from stringConst) DeleteBuilder {
+func (b DeleteBuilder) From(from safeString) DeleteBuilder {
 	return builder.Set(b, "From", from).(DeleteBuilder)
 }
 
@@ -158,7 +158,7 @@ func (b DeleteBuilder) Where(expr Sqlizer) DeleteBuilder {
 }
 
 // OrderBy adds ORDER BY expressions to the query.
-func (b DeleteBuilder) OrderBy(orderBys ...stringConst) DeleteBuilder {
+func (b DeleteBuilder) OrderBy(orderBys ...safeString) DeleteBuilder {
 	return builder.Extend(b, "OrderBys", orderBys).(DeleteBuilder)
 }
 
@@ -173,7 +173,7 @@ func (b DeleteBuilder) Offset(offset uint64) DeleteBuilder {
 }
 
 // Suffix adds an expression to the end of the query
-func (b DeleteBuilder) Suffix(sql stringConst, args ...interface{}) DeleteBuilder {
+func (b DeleteBuilder) Suffix(sql safeString, args ...interface{}) DeleteBuilder {
 	return b.SuffixExpr(Expr(sql, args...))
 }
 

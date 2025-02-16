@@ -10,7 +10,7 @@ func TestDeleteBuilderToSql(t *testing.T) {
 	b := Delete("").
 		Prefix("WITH prefix AS ?", 0).
 		From("a").
-		Where("b = ?", 1).
+		Where(Expr("b = ?", 1)).
 		OrderBy("c").
 		Limit(2).
 		Offset(3).
@@ -44,7 +44,7 @@ func TestDeleteBuilderMustSql(t *testing.T) {
 }
 
 func TestDeleteBuilderPlaceholders(t *testing.T) {
-	b := Delete("test").Where("x = ? AND y = ?", 1, 2)
+	b := Delete("test").Where(Expr("x = ? AND y = ?", 1, 2))
 
 	sql, _, _ := b.PlaceholderFormat(Question).ToSql()
 	assert.Equal(t, "DELETE FROM test WHERE x = ? AND y = ?", sql)
@@ -55,7 +55,7 @@ func TestDeleteBuilderPlaceholders(t *testing.T) {
 
 func TestDeleteBuilderRunners(t *testing.T) {
 	db := &DBStub{}
-	b := Delete("test").Where("x = ?", 1).RunWith(db)
+	b := Delete("test").Where(Expr("x = ?", 1)).RunWith(db)
 
 	expectedSql := "DELETE FROM test WHERE x = ?"
 
@@ -72,7 +72,7 @@ func TestDeleteBuilderNoRunner(t *testing.T) {
 
 func TestDeleteWithQuery(t *testing.T) {
 	db := &DBStub{}
-	b := Delete("test").Where("id=55").Suffix("RETURNING path").RunWith(db)
+	b := Delete("test").Where(Expr("id=55")).Suffix("RETURNING path").RunWith(db)
 
 	expectedSql := "DELETE FROM test WHERE id=55 RETURNING path"
 	b.Query()
